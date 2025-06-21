@@ -71,7 +71,6 @@ def extract_info():
 
     try:
         ydl_opts = {
-            'ffmpeg_location': r'C:\ffmpeg\ffmpeg-7.1.1-essentials_build\bin',
             'format': 'best',
             'quiet': True,  # Reduce output for info extraction
             'no_warnings': True,
