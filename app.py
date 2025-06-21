@@ -24,32 +24,40 @@ def download():
 
     app.logger.info(f"Received video URL: {url}")
 
+    tmpdir = tempfile.mkdtemp()
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ydl_opts = {
-                'ffmpeg_location': r'C:\ffmpeg\ffmpeg-7.1.1-essentials_build\bin',
-                'format': 'best',
-                'outtmpl': 'downloads/%(title).80s.%(ext)s',
-            }
-            with YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                app.logger.info(f"Downloaded video to: {filename}")
+        output_template = os.path.join(tmpdir, '%(title).80s.%(ext)s')
+        ydl_opts = {
+            'format': 'best',
+            'outtmpl': output_template
+        }
 
-                return send_file(
-                    filename,
-                    mimetype='video/mp4',
-                    as_attachment=True,
-                    download_name=os.path.basename(filename)
-                )
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
 
-    except DownloadError as e:
-        app.logger.error(f"DownloadError: {e}")
-        return jsonify({'error': 'Could not download video. Please check the link.'}), 400
+        response = send_file(
+            filename,
+            mimetype='video/mp4',
+            as_attachment=True,
+            download_name=os.path.basename(filename)
+        )
+
+        # Schedule file/folder deletion after response is sent
+        @response.call_on_close
+        def cleanup():
+            try:
+                os.remove(filename)
+                os.rmdir(tmpdir)
+            except Exception as e:
+                app.logger.warning(f"Cleanup failed: {e}")
+
+        return response
+
     except Exception as e:
         app.logger.exception("Unexpected error")
         return jsonify({'error': 'An error occurred. Please try again later.'}), 500
-
+    
 # New route for extracting video information without downloading
 @app.route('/api/extract', methods=['POST'])
 def extract_info():
