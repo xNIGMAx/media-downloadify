@@ -15,6 +15,10 @@ logging.basicConfig(level=logging.INFO)
 def index():
     return render_template('index.html')
 
+@app.route('/testing')
+def testing():
+    return render_template('testing.html')
+
 # Your existing download function (slightly modified for better integration)
 @app.route('/download', methods=['POST'])
 def download():
